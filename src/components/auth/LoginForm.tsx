@@ -29,7 +29,7 @@ const LoginForm: React.FC = () => {
       // Login successful
       console.log("Login successful:", data.user);
       // Redirect to dashboard or another protected page
-      window.location.href = "/decks"; // As per auth-spec.md and prd.md
+      window.location.href = "/ai/generate"; // As per auth-spec.md and prd.md
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);

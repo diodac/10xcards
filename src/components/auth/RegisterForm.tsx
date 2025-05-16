@@ -102,7 +102,7 @@ const RegisterForm: React.FC = () => {
       // Successful registration (response.ok is true and we have JSON data)
       // Supabase session cookie should be set by the API route
       // Redirect to dashboard or flashcards page
-      window.location.href = "/decks"; // Or your flashcards page
+      window.location.href = "/ai/generate"; // Or your flashcards page
     } catch (error) {
       // This catch is for network errors or if fetch itself fails (e.g., server not reachable).
       console.error("Registration fetch network error:", error);
