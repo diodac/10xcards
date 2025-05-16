@@ -186,29 +186,39 @@
 ### 2.3. Flashcards
 
 #### `POST /api/decks/{deckId}/flashcards`
--   **Description**: Create a new flashcard within a specific deck.
+-   **Description**: Create one or more new flashcards within a specific deck.
 -   **Request Payload**:
     ```json
     {
-      "front": "string (max 256 chars, required)",
-      "back": "string (max 512 chars, required)",
-      "source": "string (required, enum: 'manual', 'ai-full', 'ai-edited')"
+      "flashcards": [
+        {
+          "front": "string (max 256 chars, required)",
+          "back": "string (max 512 chars, required)",
+          "source": "string (required, enum: 'manual', 'ai-full', 'ai-edited')"
+        }
+        // ... more flashcard objects
+      ]
     }
     ```
 -   **Response Payload (201 Created)**:
     ```json
     {
-      "id": "uuid",
-      "deck_id": "uuid",
-      "front": "string",
-      "back": "string",
-      "source": "string",
-      "created_at": "timestamp",
-      "updated_at": "timestamp"
+      "createdFlashcards": [
+        {
+          "id": "uuid",
+          "deck_id": "uuid",
+          "front": "string",
+          "back": "string",
+          "source": "string",
+          "created_at": "timestamp",
+          "updated_at": "timestamp"
+        }
+        // ... more created flashcard objects
+      ]
     }
     ```
 -   **Success Codes**:
-    -   `201 Created`: Flashcard created successfully.
+    -   `201 Created`: Flashcards created successfully.
 -   **Error Codes**:
     -   `400 Bad Request`: Invalid request payload (missing fields, invalid source, content too long).
     -   `401 Unauthorized`: User not authenticated.
