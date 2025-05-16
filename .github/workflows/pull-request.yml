@@ -83,7 +83,6 @@ jobs:
 
       - name: Run E2E tests
         env:
-          # Add your environment variables from secrets here
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

@@ -68,8 +68,19 @@ export async function generateFlashcardSuggestions(text: string): Promise<Flashc
       const content = response.choices[0].message.content;
       let suggestions: FlashcardSuggestionDto[];
       try {
+        // Clean the content: remove Markdown code block delimiters if present
+        let cleanedContent = content;
+        if (cleanedContent.startsWith("```json\n")) {
+          cleanedContent = cleanedContent.substring(7); // Remove ```json\n
+        }
+        if (cleanedContent.endsWith("\n```")) {
+          cleanedContent = cleanedContent.substring(0, cleanedContent.length - 4); // Remove \n```
+        } else if (cleanedContent.endsWith("```")) {
+          cleanedContent = cleanedContent.substring(0, cleanedContent.length - 3); // Remove ``` (if no newline before)
+        }
+
         // Attempt to parse the JSON content
-        suggestions = JSON.parse(content);
+        suggestions = JSON.parse(cleanedContent);
       } catch (parseError) {
         // Handle only JSON syntax errors here
         console.error("Failed to parse LLM response content:", parseError, { responseContent: content });
