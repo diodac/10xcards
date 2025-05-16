@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useAISuggestionsStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea"; // For future editing
+import { FlashcardSourceEnum } from "@/types"; // Added import
 
 interface AIReviewSuggestionsProps {
   onNavigate?: (path: string) => void; // Prop for navigation
@@ -10,6 +11,7 @@ interface AIReviewSuggestionsProps {
 
 export default function AIReviewSuggestions({ onNavigate }: AIReviewSuggestionsProps) {
   const { sourceText, suggestions, clearSuggestions } = useAISuggestionsStore();
+  const [isSaving, setIsSaving] = useState(false); // Added state for loading
 
   useEffect(() => {
     // console.log("Tekst źródłowy ze store:", sourceText);
@@ -20,6 +22,72 @@ export default function AIReviewSuggestions({ onNavigate }: AIReviewSuggestionsP
     //   clearSuggestions();
     // };
   }, [sourceText, suggestions]);
+
+  const handleSaveSuggestions = async () => {
+    if (suggestions.length === 0) {
+      alert("Brak sugestii do zapisania.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Step 1: Create a new deck
+      const deckResponse = await fetch("/api/decks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Fiszki wygenerowane przez AI" }),
+      });
+
+      if (!deckResponse.ok) {
+        const errorData = await deckResponse.json().catch(() => ({}));
+        throw new Error(
+          `Nie udało się utworzyć talii fiszek: ${deckResponse.status} ${deckResponse.statusText}. ${errorData.message || ""}`
+        );
+      }
+
+      const newDeck = await deckResponse.json();
+      const deckId = newDeck.id;
+
+      if (!deckId) {
+        throw new Error("Nie udało się uzyskać ID nowej talii.");
+      }
+
+      // Step 2: Prepare and save flashcards
+      const flashcardsToSave = suggestions.map((suggestion) => ({
+        front: suggestion.front,
+        back: suggestion.back,
+        source: FlashcardSourceEnum.AI_FULL,
+      }));
+
+      const flashcardsResponse = await fetch(`/api/decks/${deckId}/flashcards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flashcards: flashcardsToSave }),
+      });
+
+      if (!flashcardsResponse.ok) {
+        const errorData = await flashcardsResponse.json().catch(() => ({}));
+        throw new Error(
+          `Nie udało się zapisać fiszek: ${flashcardsResponse.status} ${flashcardsResponse.statusText}. ${errorData.message || ""}`
+        );
+      }
+
+      await flashcardsResponse.json(); // Assuming this returns the created flashcards or a success message
+
+      alert("Fiszki zostały pomyślnie zapisane!");
+      clearSuggestions();
+      if (onNavigate) {
+        onNavigate("/ai/generate");
+      } else {
+        window.location.href = "/ai/generate";
+      }
+    } catch (error) {
+      console.error("Błąd podczas zapisywania fiszek:", error);
+      alert(`Wystąpił błąd podczas zapisywania fiszek: ${error instanceof Error ? error.message : "Nieznany błąd"}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!suggestions || suggestions.length === 0) {
     return (
@@ -108,8 +176,8 @@ export default function AIReviewSuggestions({ onNavigate }: AIReviewSuggestionsP
         >
           Anuluj i wygeneruj nowe
         </Button>
-        <Button onClick={() => alert("Logika zapisu niezaimplementowana. Sugestie w konsoli.")}>
-          Zapisz wybrane fiszki (TODO)
+        <Button onClick={handleSaveSuggestions} disabled={isSaving}>
+          {isSaving ? "Zapisywanie..." : "Zapisz sugestie"}
         </Button>
       </div>
     </div>

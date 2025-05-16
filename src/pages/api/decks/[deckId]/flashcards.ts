@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { APIContext } from "astro";
 import { FlashcardSourceEnum, type CreateFlashcardsCommand } from "../../../../types";
-// import { FlashcardService } from '../../../../lib/services/flashcard.service'; // Will be uncommented later
+import { FlashcardService } from "../../../../lib/services/flashcard.service"; // Will be uncommented later
 
 export const prerender = false;
 
@@ -61,24 +61,29 @@ export async function POST(context: APIContext): Promise<Response> {
   }
 
   // Placeholder for service call and response
-  // const flashcardService = new FlashcardService(supabase);
-  // try {
-  //   const createdFlashcards = await flashcardService.createFlashcards(deckId, user.id, requestBody.flashcards);
-  //   return new Response(JSON.stringify({ createdFlashcards }), { status: 201 });
-  // } catch (error: any) {
-  //   // Map service errors to HTTP status codes (e.g., 403, 404, 500)
-  //   // This is a simplified example; more specific error handling will be added.
-  //   if (error.message === 'Deck not found') { // Example custom error check
-  //     return new Response(JSON.stringify({ message: 'Not Found: The specified deck does not exist.' }), { status: 404 });
-  //   } else if (error.message === 'Forbidden') { // Example custom error check
-  //     return new Response(JSON.stringify({ message: 'Forbidden: User does not own the specified deck.' }), { status: 403 });
-  //   }
-  //   console.error('Error creating flashcards:', error);
-  //   return new Response(JSON.stringify({ message: 'Internal Server Error' }), { status: 500 });
-  // }
-
-  return new Response(
-    JSON.stringify({ message: "Endpoint in progress", deckId, user: user.id, flashcards: requestBody.flashcards }),
-    { status: 200 }
-  );
+  const flashcardService = new FlashcardService(supabase);
+  try {
+    const createdFlashcards = await flashcardService.createFlashcards(deckId, user.id, requestBody.flashcards);
+    return new Response(JSON.stringify({ createdFlashcards }), { status: 201 });
+  } catch (error: unknown) {
+    // Map service errors to HTTP status codes (e.g., 403, 404, 500)
+    // This is a simplified example; more specific error handling will be added.
+    if (error instanceof Error) {
+      if (error.message === "Deck not found") {
+        // Example custom error check
+        return new Response(JSON.stringify({ message: "Not Found: The specified deck does not exist." }), {
+          status: 404,
+        });
+      } else if (error.message === "Forbidden") {
+        // Example custom error check
+        return new Response(JSON.stringify({ message: "Forbidden: User does not own the specified deck." }), {
+          status: 403,
+        });
+      }
+    }
+    console.error("Error creating flashcards:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "An unexpected error occurred during flashcard creation.";
+    return new Response(JSON.stringify({ message: "Internal Server Error", error: errorMessage }), { status: 500 });
+  }
 }
