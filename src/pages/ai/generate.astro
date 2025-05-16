@@ -1,0 +1,18 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import AIGenerationForm from "@/components/ai/AIGenerationForm.tsx";
+---
+
+<Layout title="Generuj fiszki przez AI">
+  <div class="container mx-auto py-8 px-4">
+    <header class="mb-8 text-center">
+      <h1 class="text-4xl font-bold mb-2">Generuj fiszki z pomocą AI</h1>
+      <p class="text-lg text-muted-foreground">
+        Wklej poniżej tekst źródłowy (od 1000 do 10000 znaków), na podstawie którego AI wygeneruje propozycje fiszek.
+      </p>
+    </header>
+    <main>
+      <AIGenerationForm client:load />
+    </main>
+  </div>
+</Layout>
