@@ -148,8 +148,8 @@ Zakładając, że `astro.config.mjs` jest skonfigurowane dla SSR (`output: 'serv
     -   Odpowiedzialność: Ochrona tras, zarządzanie przekierowaniami w oparciu o status uwierzytelnienia.
     -   Logika:
         1.  Inicjalizacja klienta Supabase po stronie serwera przy użyciu ciasteczek z żądania (`Astro.cookies`).
-        2.  Pobranie informacji o sesji/użytkowniku: `const { data: { session } } = await supabase.auth.getSession(); const user = session?.user;`.
-        3.  Zapisanie klienta Supabase i informacji o użytkowniku w `Astro.locals` (np. `Astro.locals.supabase`, `Astro.locals.user`, `Astro.locals.session`).
+        2.  Pobranie informacji o uwierzytelnionym użytkowniku: `const { data: { user }, error: userError } = await supabase.auth.getUser();`. Następnie, jeśli potrzebne są szczegóły sesji (np. `access_token`), można użyć `const { data: { session }, error: sessionError } = await supabase.auth.getSession();`. Kluczowy jest obiekt `user` z `getUser()` do weryfikacji statusu logowania.
+        3.  Zapisanie klienta Supabase, informacji o użytkowniku (z `getUser()`) i sesji (z `getSession()`) w `Astro.locals` (np. `Astro.locals.supabase`, `Astro.locals.user`, `Astro.locals.session`).
         4.  Sprawdzenie ścieżki żądania (`Astro.url.pathname`):
             -   Jeśli ścieżka jest chroniona (np. `/dashboard/*`, `/account/*`) i `!user`: przekieruj do `/login`.
             -   Jeśli ścieżka to strona autoryzacyjna (np. `/login`, `/register`) i `user`: przekieruj do `/dashboard`.
@@ -168,18 +168,22 @@ Zakładając, że `astro.config.mjs` jest skonfigurowane dla SSR (`output: 'serv
             const supabase = createSupabaseClient(context.cookies); // Tworzy klienta Supabase używając cookies
             context.locals.supabase = supabase;
 
-            const { data: { session } } = await supabase.auth.getSession();
-            const user = session?.user;
-            context.locals.session = session;
-            context.locals.user = user;
+            const { data: { user: authenticatedUser }, error: userError } = await supabase.auth.getUser();
+            // Można dodać logowanie userError w razie potrzeby
+
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            // Można dodać logowanie sessionError w razie potrzeby
+            
+            context.locals.session = session; // Przechowujemy obiekt sesji
+            context.locals.user = authenticatedUser; // Używamy użytkownika z getUser()
 
             const currentPath = context.url.pathname;
 
-            if (protectedRoutes.some(path => currentPath.startsWith(path)) && !user) {
+            if (protectedRoutes.some(path => currentPath.startsWith(path)) && !authenticatedUser) {
                 return context.redirect('/login');
             }
 
-            if (authRoutes.some(path => currentPath.startsWith(path)) && user) {
+            if (authRoutes.some(path => currentPath.startsWith(path)) && authenticatedUser) {
                 return context.redirect('/dashboard'); // lub inna strona główna dla zalogowanych
             }
 

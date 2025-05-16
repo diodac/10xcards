@@ -27,12 +27,28 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
     headers: request.headers,
   });
 
+  // Get the authenticated user
+  const {
+    data: { user: authenticatedUser },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    console.error("Error fetching authenticated user in middleware:", userError.message);
+    // Depending on the error, you might want to clear the session or handle it differently
+  }
+
+  // Get the session details (e.g., for access_token)
   const {
     data: { session },
+    error: sessionError,
   } = await supabase.auth.getSession();
-  const user = session?.user;
 
-  // Calculate session ID if session exists
+  if (sessionError) {
+    console.error("Error fetching session in middleware:", sessionError.message);
+  }
+
+  // Calculate session ID if session and access_token exist
   let sessionId: string | undefined = undefined;
   if (session?.access_token) {
     const hash = crypto.createHash("sha256");
@@ -41,21 +57,20 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
   }
 
   // Store user, session, supabase client, and session ID in Astro.locals
-  locals.session = session;
-  locals.user = user ? { id: user.id, email: user.email } : undefined;
+  locals.session = session; // session object from getSession()
+  locals.user = authenticatedUser ? { id: authenticatedUser.id, email: authenticatedUser.email } : undefined;
   locals.supabase = supabase;
   locals.sessionId = sessionId;
 
   const currentPath = url.pathname;
 
-  // If user is authenticated and tries to access login/register, redirect to dashboard
-  if (user && AUTH_REDIRECT_PATHS.includes(currentPath)) {
+  // If user is authenticated (based on authenticatedUser) and tries to access login/register, redirect to dashboard
+  if (authenticatedUser && AUTH_REDIRECT_PATHS.includes(currentPath)) {
     return redirect("/decks", 302); // Or your main app page
   }
 
-  // If user is not authenticated and tries to access a protected route, redirect to login
-  // This assumes any path NOT in PUBLIC_PATHS is protected.
-  if (!user && !PUBLIC_PATHS.some((publicPath) => currentPath.startsWith(publicPath))) {
+  // If user is not authenticated (based on authenticatedUser) and tries to access a protected route, redirect to login
+  if (!authenticatedUser && !PUBLIC_PATHS.some((publicPath) => currentPath.startsWith(publicPath))) {
     // Exception for API routes that might be public but not explicitly listed (e.g. /api/public-data)
     // You might need more granular checks for API routes if some are public and some are protected.
     if (currentPath.startsWith("/api/")) {
