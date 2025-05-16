@@ -1,29 +1,37 @@
 import type { APIRoute } from "astro";
+// import crypto from "node:crypto"; // Removed, sessionId now comes from locals
 import { GenerateFlashcardsCommandSchema } from "../../../lib/schemas/ai.schemas";
-import { generateFlashcardSuggestions, OpenRouterError, LLMUnavailableError } from "../../../lib/services/ai.service";
+import {
+  generateFlashcardSuggestions,
+  AIServiceError,
+  LLMUnavailableError,
+  AIConfigurationError,
+} from "../../../lib/services/ai.service";
 import type { GenerateFlashcardsResponseDto, GenerateFlashcardsCommand } from "../../../types";
 import { logEvent } from "../../../lib/utils/logEvent";
 
 export const prerender = false;
 
-// Define dummy user and session identifiers for use when no actual user is present
-const DUMMY_USER_ID = "dummy-user-001";
-const DUMMY_SESSION_ID = "dummy-session-001";
-
 export const POST: APIRoute = async ({ request, locals }) => {
-  const { user, supabaseClient } = locals;
+  const { user, supabase, sessionId } = locals;
 
-  // For now, we operate with a dummy user. Authentication check is bypassed.
-  // if (!user) {
-  //   return new Response("Unauthorized: User not authenticated", { status: 401 });
-  // }
+  if (!user) {
+    // This case should ideally be caught by middleware for protected routes,
+    // but it's good practice to have it here too.
+    return new Response("Unauthorized: User not authenticated", { status: 401 });
+  }
+
+  const userId = user.id;
+  // Use sessionId from locals (renamed to localSessionId to avoid conflict with any other potential sessionId variable if one existed)
+  // provide a fallback if not present (e.g., if session didn't exist)
+  const eventSessionId = sessionId || "no-session-token";
 
   let command: GenerateFlashcardsCommand;
   try {
     const body = await request.json();
     const validationResult = GenerateFlashcardsCommandSchema.safeParse(body);
     if (!validationResult.success) {
-      await logEvent(supabaseClient, DUMMY_USER_ID, DUMMY_SESSION_ID, "AI_FLASHCARD_GENERATION_VALIDATION_ERROR", {
+      await logEvent(supabase, userId, eventSessionId, "AI_FLASHCARD_GENERATION_VALIDATION_ERROR", {
         errors: validationResult.error.flatten().fieldErrors,
         requestBody: body,
       });
@@ -38,7 +46,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     command = validationResult.data as GenerateFlashcardsCommand;
   } catch (error) {
     const requestText = await request.text().catch(() => "Could not read request text");
-    await logEvent(supabaseClient, DUMMY_USER_ID, DUMMY_SESSION_ID, "AI_FLASHCARD_GENERATION_VALIDATION_ERROR", {
+    // In this early error (invalid JSON), user/session might be available but command is not.
+    // userId and eventSessionId from above are still valid.
+    await logEvent(supabase, userId, eventSessionId, "AI_FLASHCARD_GENERATION_VALIDATION_ERROR", {
       error: error instanceof Error ? error.message : String(error),
       requestBody: requestText,
     });
@@ -52,7 +62,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const suggestions = await generateFlashcardSuggestions(command.text);
     const responseDto: GenerateFlashcardsResponseDto = { suggestions };
 
-    await logEvent(supabaseClient, DUMMY_USER_ID, DUMMY_SESSION_ID, "AI_FLASHCARD_GENERATION_SUCCESS", {
+    await logEvent(supabase, userId, eventSessionId, "AI_FLASHCARD_GENERATION_SUCCESS", {
       numSuggestions: suggestions.length,
       firstSuggestion: suggestions[0],
     });
@@ -62,20 +72,26 @@ export const POST: APIRoute = async ({ request, locals }) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    const commonErrorPayload = {
+      textInput: command.text.substring(0, 200) + (command.text.length > 200 ? "..." : ""),
+    };
+
     if (error instanceof LLMUnavailableError) {
-      await logEvent(supabaseClient, DUMMY_USER_ID, DUMMY_SESSION_ID, "AI_FLASHCARD_GENERATION_LLM_UNAVAILABLE_ERROR", {
+      await logEvent(supabase, userId, eventSessionId, "AI_FLASHCARD_GENERATION_LLM_UNAVAILABLE_ERROR", {
         errorMessage: error.message,
-        textInput: command.text.substring(0, 200) + (command.text.length > 200 ? "..." : ""),
+        ...commonErrorPayload,
       });
       return new Response(JSON.stringify({ message: error.message }), {
         status: 503,
         headers: { "Content-Type": "application/json" },
       });
     }
-    if (error instanceof OpenRouterError) {
-      await logEvent(supabaseClient, DUMMY_USER_ID, DUMMY_SESSION_ID, "AI_FLASHCARD_GENERATION_LLM_ERROR", {
+
+    if (error instanceof AIServiceError) {
+      await logEvent(supabase, userId, eventSessionId, "AI_FLASHCARD_GENERATION_AI_SERVICE_ERROR", {
         errorMessage: error.message,
-        textInput: command.text.substring(0, 200) + (command.text.length > 200 ? "..." : ""),
+        errorCause: error.cause,
+        ...commonErrorPayload,
       });
       return new Response(JSON.stringify({ message: error.message }), {
         status: 500,
@@ -83,12 +99,24 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    await logEvent(supabaseClient, DUMMY_USER_ID, DUMMY_SESSION_ID, "AI_FLASHCARD_GENERATION_SERVER_ERROR", {
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-      textInput: command.text.substring(0, 200) + (command.text.length > 200 ? "..." : ""),
-    });
+    if (error instanceof AIConfigurationError) {
+      await logEvent(supabase, userId, eventSessionId, "AI_FLASHCARD_GENERATION_CONFIG_ERROR", {
+        errorMessage: error.message,
+        ...commonErrorPayload,
+      });
+      return new Response(JSON.stringify({ message: error.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    await logEvent(supabase, userId, eventSessionId, "AI_FLASHCARD_GENERATION_SERVER_ERROR", {
+      errorMessage: errorMessage,
+      errorStack: errorStack,
+      ...commonErrorPayload,
+    });
     return new Response(JSON.stringify({ message: `Internal Server Error: ${errorMessage}` }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

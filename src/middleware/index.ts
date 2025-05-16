@@ -1,5 +1,6 @@
 import { createSupabaseServerInstance } from "@/db/supabase.client";
 import { defineMiddleware } from "astro:middleware";
+import crypto from "node:crypto";
 
 // Define public paths that do not require authentication.
 // Add any other public static pages or specific API routes if necessary.
@@ -31,9 +32,19 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
   } = await supabase.auth.getSession();
   const user = session?.user;
 
-  // Store user and session in Astro.locals to be accessible in Astro pages/endpoints
+  // Calculate session ID if session exists
+  let sessionId: string | undefined = undefined;
+  if (session?.access_token) {
+    const hash = crypto.createHash("sha256");
+    hash.update(session.access_token);
+    sessionId = hash.digest("hex");
+  }
+
+  // Store user, session, supabase client, and session ID in Astro.locals
   locals.session = session;
-  locals.user = user ? { id: user.id, email: user.email } : undefined; // Store only essential, serializable fields
+  locals.user = user ? { id: user.id, email: user.email } : undefined;
+  locals.supabase = supabase;
+  locals.sessionId = sessionId;
 
   const currentPath = url.pathname;
 

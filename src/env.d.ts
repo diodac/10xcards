@@ -9,7 +9,8 @@ declare namespace App {
       // Add any other user properties you intend to store from the Supabase user object
     };
     session?: import("@supabase/supabase-js").Session | null; // Store the full session if needed
-    supabase?: import("@supabase/supabase-js").SupabaseClient;
+    supabase: import("@supabase/supabase-js").SupabaseClient; // Made non-optional
+    sessionId?: string; // Renamed from hashedSessionId
     // Add other properties to Astro.locals as needed for your application
   }
 }
