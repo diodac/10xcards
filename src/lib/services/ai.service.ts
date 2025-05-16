@@ -1,113 +1,131 @@
 import type { FlashcardSuggestionDto } from "../../types";
+import { OpenRouterService } from "./openrouter/open-router.service";
+import {
+  OpenRouterError as OpenRouterServiceError, // Alias to avoid naming conflict
+  ConfigurationError as OpenRouterConfigurationError,
+  NetworkError as OpenRouterNetworkError,
+  ResponseParsingError as OpenRouterResponseParsingError,
+} from "./openrouter/errors";
 
 // Custom error classes for more specific error handling in the API endpoint
-export class OpenRouterError extends Error {
-  constructor(message: string) {
+export class AIServiceError extends Error {
+  constructor(
+    message: string,
+    public cause?: unknown
+  ) {
     super(message);
-    this.name = "OpenRouterError";
+    this.name = "AIServiceError";
   }
 }
 
-export class LLMUnavailableError extends Error {
-  constructor(message: string) {
-    super(message);
+export class LLMUnavailableError extends AIServiceError {
+  constructor(message: string, cause?: unknown) {
+    super(message, cause);
     this.name = "LLMUnavailableError";
   }
 }
 
+export class AIConfigurationError extends AIServiceError {
+  constructor(message: string, cause?: unknown) {
+    super(message, cause);
+    this.name = "AIConfigurationError";
+  }
+}
+
 /**
- * Generates flashcard suggestions using the OpenRouter.ai API.
+ * Generates flashcard suggestions using the OpenRouter.ai API via OpenRouterService.
  * @param text The input text to generate flashcards from.
  * @returns A promise that resolves to an array of flashcard suggestions.
- * @throws {OpenRouterError} If there's an issue with the OpenRouter.ai API request or response.
+ * @throws {AIServiceError} If there's an issue with the AI service.
  * @throws {LLMUnavailableError} If the LLM service is unavailable.
+ * @throws {AIConfigurationError} If the AI service is not configured properly.
  */
 export async function generateFlashcardSuggestions(text: string): Promise<FlashcardSuggestionDto[]> {
   const apiKey = import.meta.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
     console.error("OPENROUTER_API_KEY is not set.");
-    // In a real scenario, you might throw a configuration error or handle this differently.
-    // For now, throwing a generic error that the endpoint handler will catch as 500.
-    throw new Error("Server configuration error: OpenRouter API key missing.");
+    throw new AIConfigurationError("Server configuration error: OpenRouter API key missing.");
   }
 
-  // TODO: Construct a more sophisticated prompt based on requirements.
-  const prompt = `Given the following text, generate a list of flashcards. Each flashcard should have a 'front' and a 'back'. Format the output as a JSON array of objects, where each object has a "front" and a "back" key. Text: ${text}`;
+  const openRouterService = new OpenRouterService({
+    apiKey,
+    // Potentially override defaultModel, apiBaseUrl, requestTimeout if needed
+  });
 
-  // Placeholder for OpenRouter.ai API details
-  const openRouterApiUrl = "https://openrouter.ai/api/v1/chat/completions"; // Replace with actual endpoint if different
-  // TODO: Select an appropriate model. Using a placeholder.
-  const model = "openai/gpt-3.5-turbo";
+  const prompt = `Given the following text, generate a list of flashcards. Each flashcard should have a 'front' and a 'back'. Format the output as a JSON array of objects, where each object has a "front" and a "back" key. Text: ${text}`;
+  const model = "openai/gpt-4o-mini"; // Or choose a model from OpenRouterService defaults or config
 
   try {
-    const response = await fetch(openRouterApiUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": `https://your-site-url.com`, // Optional: Replace with your site URL
-        "X-Title": `Your App Name`, // Optional: Replace with your app name
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: "user", content: prompt }],
-        // TODO: Adjust other parameters like max_tokens, temperature as needed
-      }),
+    const response = await openRouterService.getChatCompletion({
+      model: model,
+      messages: [{ role: "user", content: prompt }],
+      // response_format can be added here if structured JSON output is explicitly required by schema
+      // For this prompt, we rely on the LLM to produce a parsable JSON string.
     });
 
-    if (!response.ok) {
-      // Attempt to read error details from OpenRouter response
-      let errorDetails = "Failed to fetch suggestions from OpenRouter.";
+    if (response.choices && response.choices.length > 0 && response.choices[0].message?.content) {
+      const content = response.choices[0].message.content;
       try {
-        const errorData = await response.json();
-        errorDetails = errorData.error?.message || JSON.stringify(errorData);
-      } catch (parseError) {
-        // Could not parse error response, use status text
-        console.warn("Could not parse error response from OpenRouter:", parseError);
-        errorDetails = `OpenRouter API request failed with status ${response.status}: ${response.statusText}`;
-      }
-
-      if (response.status === 503) {
-        throw new LLMUnavailableError(`LLM service unavailable: ${errorDetails}`);
-      }
-      throw new OpenRouterError(`OpenRouter API Error: ${errorDetails}`);
-    }
-
-    const data = await response.json();
-
-    // TODO: Implement robust parsing and validation of the LLM's response structure.
-    // This is a simplistic approach and assumes the LLM perfectly follows the prompt format.
-    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-      const content = data.choices[0].message.content;
-      try {
-        // The prompt asks for a JSON array string, so we need to parse it.
         const suggestions: FlashcardSuggestionDto[] = JSON.parse(content);
         if (
           !Array.isArray(suggestions) ||
           !suggestions.every((s) => typeof s.front === "string" && typeof s.back === "string")
         ) {
-          throw new OpenRouterError("LLM response is not in the expected FlashcardSuggestionDto[] format.");
+          throw new AIServiceError("LLM response is not in the expected FlashcardSuggestionDto[] format.", {
+            responseContent: content,
+          });
         }
         return suggestions;
       } catch (e) {
-        console.error("Failed to parse LLM response content:", e);
-        throw new OpenRouterError(
-          "Failed to parse LLM response. Ensure the LLM output is a valid JSON array of {front: string, back: string} objects."
+        console.error("Failed to parse LLM response content:", e, { responseContent: content });
+        throw new AIServiceError(
+          "Failed to parse LLM response. Ensure the LLM output is a valid JSON array of {front: string, back: string} objects.",
+          { originalError: e, responseContent: content }
         );
       }
     } else {
-      throw new OpenRouterError("No suggestions found in OpenRouter response or unexpected response structure.");
+      throw new AIServiceError("No suggestions found in OpenRouter response or unexpected response structure.", {
+        apiResponse: response,
+      });
     }
   } catch (error) {
-    if (error instanceof OpenRouterError || error instanceof LLMUnavailableError) {
-      // Re-throw custom errors to be handled by the endpoint
+    console.error("Error during flashcard generation with OpenRouterService:", error);
+
+    if (error instanceof OpenRouterConfigurationError) {
+      throw new AIConfigurationError(`OpenRouterService configuration error: ${error.message}`, error);
+    }
+    if (error instanceof OpenRouterServiceError) {
+      // OpenRouterServiceError is the base for API errors from OpenRouterService
+      // Specific errors like RateLimitError, AuthenticationError, ServerError will also be caught here.
+      // For now, we'll map 503-like errors to LLMUnavailableError.
+      // The OpenRouterService already has ServerError for 500, 502, 503, 504.
+      if (
+        error.statusCode === 503 ||
+        (error.name === "ServerError" && error.statusCode && error.statusCode >= 500 && error.statusCode <= 504)
+      ) {
+        throw new LLMUnavailableError(`LLM service unavailable: ${error.message}`, error);
+      }
+      throw new AIServiceError(`OpenRouter API interaction failed: ${error.message}`, error);
+    }
+    if (error instanceof OpenRouterNetworkError) {
+      throw new AIServiceError(`Network error while communicating with OpenRouter: ${error.message}`, error);
+    }
+    if (error instanceof OpenRouterResponseParsingError) {
+      throw new AIServiceError(`Failed to parse response from OpenRouter: ${error.message}`, error);
+    }
+    if (
+      error instanceof AIServiceError ||
+      error instanceof LLMUnavailableError ||
+      error instanceof AIConfigurationError
+    ) {
+      // Re-throw already mapped custom errors
       throw error;
     }
-    // Handle network errors or other unexpected issues
-    console.error("Error calling OpenRouter API:", error);
-    throw new Error(
-      `An unexpected error occurred while trying to generate flashcards: ${error instanceof Error ? error.message : String(error)}`
+    // Handle other unexpected issues not originating from OpenRouterService directly but within this function
+    throw new AIServiceError(
+      `An unexpected error occurred while trying to generate flashcards: ${error instanceof Error ? error.message : String(error)}`,
+      error
     );
   }
 }
