@@ -1,17 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { generateFlashcardSuggestions, AIServiceError, LLMUnavailableError, AIConfigurationError } from "./ai.service";
+import {
+  generateFlashcardSuggestions,
+  AIServiceError,
+  LLMUnavailableError,
+  AIConfigurationError,
+} from "../../src/lib/services/ai.service";
 import {
   OpenRouterError as OpenRouterServiceError, // Alias used in ai.service.ts for OpenRouterError
   ConfigurationError as OpenRouterConfigurationError,
   NetworkError as OpenRouterNetworkError,
   ResponseParsingError as OpenRouterResponseParsingError,
   ServerError as OpenRouterServerError,
-} from "./openrouter/errors";
+} from "../../src/lib/services/openrouter/errors";
 
 // Mock OpenRouterService
 // Factory function is executed before any imports in the module where vi.mock is called.
 const mockGetChatCompletion = vi.fn();
-vi.mock("./openrouter/open-router.service", () => {
+vi.mock("../../src/lib/services/openrouter/open-router.service", () => {
   return {
     OpenRouterService: vi.fn().mockImplementation(() => {
       return {
