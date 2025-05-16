@@ -13,13 +13,6 @@ Architektura interfejsu użytkownika dla 10x-cards została zaprojektowana z nac
 - **Kluczowe komponenty:** Formularz uwierzytelnienia, kontrolki inline walidacji, przyciski, komunikaty o błędach.
 - **UX, dostępność i bezpieczeństwo:** Prosty i przejrzysty interfejs, zgodność z WCAG, wysoka czytelność, zabezpieczenia przed nieautoryzowanym dostępem.
 
-### Dashboard (strona główna po zalogowaniu)
-- **Ścieżka widoku:** `/dashboard`
-- **Główny cel:** Centralny punkt orientacyjny z dostępem do głównych funkcji aplikacji.
-- **Kluczowe informacje:** Podsumowanie zestawów fiszek, szybki dostęp do głównych funkcji (sesja nauki, lista zestawów), notyfikacje.
-- **Kluczowe komponenty:** Topbar (z nazwą serwisu i menu profilu), główny panel informacyjny, skróty do najważniejszych funkcji.
-- **UX, dostępność i bezpieczeństwo:** Intuicyjne rozmieszczenie elementów, responsywność, łatwy dostęp do najważniejszych akcji oraz zabezpieczenia poprzez mechanizmy autoryzacji.
-
 ### Widok listy zestawów fiszek
 - **Ścieżka widoku:** `/decks`
 - **Główny cel:** Prezentacja listy istniejących zestawów fiszek z możliwością wyszukiwania, sortowania i paginacji.
@@ -48,16 +41,32 @@ Architektura interfejsu użytkownika dla 10x-cards została zaprojektowana z nac
 - **Kluczowe komponenty:** Wyświetlacz fiszek, przyciski do odsłonięcia tyłu fiszki, przyciski oceny trudności, nawigacja między fiszkami.
 - **UX, dostępność i bezpieczeństwo:** Intuicyjna interakcja, minimalizacja stresu poznawczego, przejrzysty design, zgodność z WCAG.
 
+### Ekran generowania fiszek przez AI
+- **Ścieżka widoku:** `/ai/generate` lub `/decks/{deckId}/ai/generate` (do ustalenia, czy generowanie jest zawsze w kontekście decku)
+- **Główny cel:** Umożliwienie użytkownikowi wprowadzenia tekstu źródłowego do wygenerowania fiszek przez AI.
+- **Kluczowe informacje:** Pole tekstowe na treść (1000-10000 znaków), przycisk "Generuj fiszki", informacje o procesie.
+- **Kluczowe komponenty:** Duże pole tekstowe (textarea), przycisk akcji, wskaźnik ładowania.
+- **UX, dostępność i bezpieczeństwo:** Jasne instrukcje dotyczące wprowadzania tekstu, informacja zwrotna o statusie generowania, obsługa błędów (np. zbyt krótki/długi tekst).
+
+### Ekran przeglądu sugestii fiszek AI
+- **Ścieżka widoku:** `/ai/review-suggestions` lub modal po zakończeniu generowania na `/ai/generate`
+- **Główny cel:** Prezentacja wygenerowanych przez AI sugestii fiszek z możliwością ich edycji, akceptacji lub odrzucenia przed zapisaniem.
+- **Kluczowe informacje:** Lista sugerowanych fiszek (przód, tył), opcje edycji dla każdej fiszki, przyciski "Zapisz wybrane", "Odrzuć", "Edytuj".
+- **Kluczowe komponenty:** Lista kart (sugestii fiszek), pola edycji (inline lub w modalu), przyciski akcji dla każdej sugestii i dla całego zestawu.
+- **UX, dostępność i bezpieczeństwo:** Możliwość łatwej edycji i selekcji, jasne rozróżnienie między oryginalną sugestią a edytowaną treścią, informacja o liczbie wybranych fiszek.
+
 ## 3. Mapa podróży użytkownika
 
 1. Użytkownik wchodzi na stronę (`/login`) i loguje się/rejestruje za pomocą email.
 2. Po pomyślnym zalogowaniu użytkownik trafia do dashboardu (`/dashboard`), gdzie widzi podsumowanie swoich zestawów fiszek i dostęp do głównych funkcji.
-3. Użytkownik przechodzi do widoku listy zestawów fiszek (`/decks`), gdzie może wyszukać, sortować lub utworzyć nowy zestaw.
-4. Po wybraniu zestawu, użytkownik ma możliwość zarządzania fiszkami – przeglądanie listy fiszek i wybór konkretnej fiszki do podglądu/edycji (`/decks/{deckId}/flashcard/{flashcardId}`).
-5. Użytkownik może edytować wybraną fiszkę, korzystając z inline walidacji, aby szybko zapisać zmiany.
-6. W przypadku nowego użytkownika, modal onboardingowy pojawia się na dashboardzie, aby przedstawić kluczowe funkcje.
-7. Użytkownik może rozpocząć sesję nauki, przechodząc do widoku sesji (`/study`) i interaktywnie powtarzać fiszki.
-8. Topbar umożliwia szybkie przejście do profilu lub wylogowanie się, a breadcrumbs ułatwiają nawigację po głębszych ścieżkach aplikacji.
+3. Użytkownik może chcieć wygenerować fiszki za pomocą AI. Przechodzi do widoku generowania fiszek (`/ai/generate`), wkleja tekst i inicjuje proces.
+4. Po wygenerowaniu sugestii, użytkownik jest przekierowywany na ekran przeglądu (`/ai/review-suggestions`), gdzie może edytować, akceptować lub odrzucać fiszki. Zaakceptowane fiszki są dodawane do wybranego (lub nowego) zestawu.
+5. Użytkownik przechodzi do widoku listy zestawów fiszek (`/decks`), gdzie może wyszukać, sortować lub utworzyć nowy zestaw.
+6. Po wybraniu zestawu, użytkownik ma możliwość zarządzania fiszkami – przeglądanie listy fiszek i wybór konkretnej fiszki do podglądu/edycji (`/decks/{deckId}/flashcard/{flashcardId}`).
+7. Użytkownik może edytować wybraną fiszkę, korzystając z inline walidacji, aby szybko zapisać zmiany.
+8. W przypadku nowego użytkownika, modal onboardingowy pojawia się na dashboardzie, aby przedstawić kluczowe funkcje.
+9. Użytkownik może rozpocząć sesję nauki, przechodząc do widoku sesji (`/study`) i interaktywnie powtarzać fiszki.
+10. Topbar umożliwia szybkie przejście do profilu lub wylogowanie się, a breadcrumbs ułatwiają nawigację po głębszych ścieżkach aplikacji.
 
 ## 4. Układ i struktura nawigacji
 
