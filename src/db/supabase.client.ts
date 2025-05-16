@@ -1,11 +1,11 @@
-import type { SupabaseClient as OriginalSupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient as OriginalSupabaseClient } from "@supabase/supabase-js";
 import type { AstroCookies } from "astro";
 import { createServerClient, type CookieOptionsWithName } from "@supabase/ssr";
-import type { Database } from "../db/database.types.ts"; // Assuming database.types.ts exists or will be created
+import type { Database } from "./database.types";
 
-// Re-exporting SupabaseClient as per project guidelines mentioned in backend.mdc
-// This allows for a centralized point of control for this type if needed later.
-export type SupabaseClient = OriginalSupabaseClient;
+// Re-export SupabaseClient with the Database generics applied for type safety throughout the app
+// as per project guidelines (backend.mdc: Use SupabaseClient type from `src/db/supabase.client.ts`).
+export type SupabaseClient = OriginalSupabaseClient<Database>;
 
 // If you also intend to create and export a client instance from this file:
 // import { createClient } from '@supabase/supabase-js';
