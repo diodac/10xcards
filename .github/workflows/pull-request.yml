@@ -1,0 +1,138 @@
+name: Pull Request CI
+
+on:
+  pull_request:
+    branches: [ main ] # Assuming 'main' is your primary branch, adjust if it's 'master' or other
+
+permissions:
+  contents: read
+  pull-requests: write # Required for adding PR comments
+  actions: read # Required for actions/checkout and other GitHub actions
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        # Assuming vitest is configured to output coverage to ./coverage
+        # Add relevant coverage flags if needed, e.g., vitest run --coverage
+        run: npm run test:unit -- --coverage 
+
+      - name: Upload coverage artifact (Unit Tests)
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: coverage/ # Adjust this path if your coverage output directory is different
+          if-no-files-found: warn # Optional: warn if no coverage files are found
+
+  e2e-test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    # Define environment for E2E tests if needed, e.g., for different API endpoints
+    environment: integration # As requested
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        # Installs Chromium as it's the only one enabled in playwright.config.ts
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        env:
+          # Add your environment variables from secrets here
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: npm run test:e2e
+
+      - name: Upload E2E test results/report
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-report
+          path: playwright-report/ # Default Playwright report directory
+          if-no-files-found: warn
+
+
+  status-comment:
+    name: Post Status Comment
+    runs-on: ubuntu-latest
+    needs: [lint, unit-test, e2e-test] # Runs only if all previous jobs succeed
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Required to access GitHub context like PR number
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.issue.number;
+            if (!prNumber) {
+              console.log('Could not get PR number, skipping comment.');
+              return;
+            }
+            
+            // Determine overall status based on the outcome of the 'needs' jobs
+            // Note: This job only runs if all `needs` jobs are successful by default.
+            // If you were to use `if: always()`, you'd check `needs.<job_id>.result`
+            const overallStatus = "✅ All checks passed!"; // Simplified for success-only path
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `
+                ## CI Status Update
+                ---
+                - **Linting**: ✅ Passed
+                - **Unit Tests**: ✅ Passed
+                - **E2E Tests**: ✅ Passed
+                ---
+                **Overall**: ${overallStatus}
+              `
+            }); 
