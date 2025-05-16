@@ -50,7 +50,7 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
 
   // If user is authenticated and tries to access login/register, redirect to dashboard
   if (user && AUTH_REDIRECT_PATHS.includes(currentPath)) {
-    return redirect("/ai/generate", 302); // Or your main app page
+    return redirect("/decks", 302); // Or your main app page
   }
 
   // If user is not authenticated and tries to access a protected route, redirect to login

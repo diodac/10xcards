@@ -34,10 +34,10 @@ export default function LoginForm({ onNavigate }: LoginFormProps) {
       console.log("Login successful:", data.user);
       // Redirect to dashboard or another protected page
       if (onNavigate) {
-        onNavigate("/ai/generate"); // As per auth-spec.md and prd.md
+        onNavigate("/decks");
       } else {
         console.warn("Navigate function not provided, falling back to window.location.href");
-        window.location.href = "/ai/generate"; // As per auth-spec.md and prd.md
+        window.location.href = "/decks";
       }
     } catch (err: unknown) {
       if (err instanceof Error) {

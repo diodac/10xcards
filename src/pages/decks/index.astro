@@ -1,0 +1,23 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import DecksList from "@/components/decks/DecksList.tsx";
+
+// You can add server-side logic here if needed, e.g., fetching data for DecksList
+// or authentication checks if the page is protected.
+
+// Example data to pass if the component required it
+// const decksData = await fetchDecks(); // Assuming you have such a function
+---
+
+<Layout title="Twoje Zestawy Fiszek">
+  <main class="container mx-auto px-4 py-8">
+    <DecksList client:load />
+    {
+      /*
+      The `client:load` directive tells Astro to load and hydrate the React component
+      immediately when the page loads. You might consider other directives
+      like `client:idle` or `client:visible` depending on performance needs.
+    */
+    }
+  </main>
+</Layout>
