@@ -1,6 +1,7 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import AIGenerationForm from "@/components/ai/AIGenerationForm.tsx";
+import { navigate } from "astro:transitions/client";
 ---
 
 <Layout title="Generuj fiszki przez AI">
@@ -12,7 +13,7 @@ import AIGenerationForm from "@/components/ai/AIGenerationForm.tsx";
       </p>
     </header>
     <main>
-      <AIGenerationForm client:load />
+      <AIGenerationForm client:load onNavigate={navigate} />
     </main>
   </div>
 </Layout>

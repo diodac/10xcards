@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 
-const RegisterForm: React.FC = () => {
+interface RegisterFormProps {
+  onNavigate?: (path: string) => void; // Prop for navigation
+}
+
+export default function RegisterForm({ onNavigate }: RegisterFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -9,6 +13,7 @@ const RegisterForm: React.FC = () => {
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [formError, setFormError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,6 +58,8 @@ const RegisterForm: React.FC = () => {
       return;
     }
 
+    setIsLoading(true);
+
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -62,51 +69,32 @@ const RegisterForm: React.FC = () => {
         body: JSON.stringify({ email, password }),
       });
 
-      // Get the raw text of the response first to see what's coming back
-      const responseText = await response.text();
-      let data;
-
-      try {
-        // Try to parse it as JSON
-        data = JSON.parse(responseText);
-      } catch (e) {
-        // If JSON parsing fails, this is the SyntaxError
-        console.error("Failed to parse JSON response. Server sent:", responseText, "Error:", e);
-        if (!response.ok) {
-          setFormError(`Błąd serwera (${response.status}). Odpowiedź nie była w formacie JSON. Spróbuj ponownie.`);
-        } else {
-          // Response was ok, but not valid JSON. This is unusual for our API.
-          setFormError("Otrzymano nieprawidłową odpowiedź z serwera (nie JSON).");
-        }
-        return;
-      }
+      const data = await response.json();
 
       if (!response.ok) {
-        // We have JSON data, but the request was not "ok" (e.g., 400, 401, 500)
-        if (data && data.error) {
-          // Specific error handling based on Supabase messages if needed
-          if (data.error.toLowerCase().includes("user already registered")) {
-            setEmailError("Użytkownik o tym adresie email już istnieje.");
-          } else if (data.error.toLowerCase().includes("password should be at least 6 characters")) {
-            setPasswordError("Hasło musi mieć co najmniej 6 znaków.");
-          } else {
-            setFormError(data.error || `Wystąpił błąd podczas rejestracji (${response.status}).`);
-          }
-        } else {
-          // Non-ok response, but no specific 'error' field in the JSON
-          setFormError(`Błąd serwera (${response.status}). Spróbuj ponownie.`);
-        }
-        return;
+        throw new Error(data.error || "Rejestracja nie powiodła się");
       }
 
-      // Successful registration (response.ok is true and we have JSON data)
-      // Supabase session cookie should be set by the API route
-      // Redirect to dashboard or flashcards page
-      window.location.href = "/ai/generate"; // Or your flashcards page
-    } catch (error) {
-      // This catch is for network errors or if fetch itself fails (e.g., server not reachable).
-      console.error("Registration fetch network error:", error);
-      setFormError("Nie udało się połączyć z serwerem. Sprawdź połączenie internetowe.");
+      // Registration successful
+      console.log("Registration successful for user:", data.user);
+      // alert("Registration successful! Please log in."); // Consider better UX
+
+      // Redirect to login page or directly to a protected page if session is created
+      if (onNavigate) {
+        // Assuming direct navigation to a page after registration if session is auto-created
+        onNavigate("/ai/generate"); // Or your flashcards page
+      } else {
+        console.warn("Navigate function not provided, falling back to window.location.href");
+        window.location.href = "/ai/generate"; // Or your flashcards page
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setFormError(err.message);
+      } else {
+        setFormError("Wystąpił nieoczekiwany błąd.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -128,6 +116,7 @@ const RegisterForm: React.FC = () => {
             // required // HTML5 validation can be kept or removed if custom handling is preferred
             className={`auth-input ${emailError ? "border-red-500" : ""}`}
             placeholder="ty@example.com"
+            disabled={isLoading}
           />
           {emailError && <p className="mt-1 text-xs text-red-400">{emailError}</p>}
         </div>
@@ -148,6 +137,7 @@ const RegisterForm: React.FC = () => {
             // required
             className={`auth-input ${passwordError ? "border-red-500" : ""}`}
             placeholder="••••••••"
+            disabled={isLoading}
           />
           {passwordError && <p className="mt-1 text-xs text-red-400">{passwordError}</p>}
         </div>
@@ -168,18 +158,17 @@ const RegisterForm: React.FC = () => {
             // required
             className={`auth-input ${confirmPasswordError ? "border-red-500" : ""}`}
             placeholder="••••••••"
+            disabled={isLoading}
           />
           {confirmPasswordError && <p className="mt-1 text-xs text-red-400">{confirmPasswordError}</p>}
         </div>
       </div>
 
       <div>
-        <button type="submit" className="auth-button">
-          Zarejestruj się
+        <button type="submit" className="auth-button" disabled={isLoading}>
+          {isLoading ? "Rejestracja..." : "Zarejestruj się"}
         </button>
       </div>
     </form>
   );
-};
-
-export default RegisterForm;
+}

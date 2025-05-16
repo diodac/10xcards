@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 
-const LoginForm: React.FC = () => {
+interface LoginFormProps {
+  onNavigate?: (path: string) => void; // Prop for navigation
+}
+
+export default function LoginForm({ onNavigate }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +33,12 @@ const LoginForm: React.FC = () => {
       // Login successful
       console.log("Login successful:", data.user);
       // Redirect to dashboard or another protected page
-      window.location.href = "/ai/generate"; // As per auth-spec.md and prd.md
+      if (onNavigate) {
+        onNavigate("/ai/generate"); // As per auth-spec.md and prd.md
+      } else {
+        console.warn("Navigate function not provided, falling back to window.location.href");
+        window.location.href = "/ai/generate"; // As per auth-spec.md and prd.md
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -103,6 +112,4 @@ const LoginForm: React.FC = () => {
       </div>
     </form>
   );
-};
-
-export default LoginForm;
+}

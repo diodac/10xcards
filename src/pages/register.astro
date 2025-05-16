@@ -2,11 +2,12 @@
 // src/pages/register.astro
 import AuthLayout from "@/layouts/AuthLayout.astro";
 import RegisterForm from "@/components/auth/RegisterForm.tsx";
+import { navigate } from "astro:transitions/client";
 ---
 
 <AuthLayout title="Rejestracja">
   <h1 class="auth-card-title">Stwórz konto</h1>
-  <RegisterForm client:load />
+  <RegisterForm client:load onNavigate={navigate} />
   <div class="mt-6 text-center">
     <p class="text-sm text-blue-100/90">
       Masz już konto?

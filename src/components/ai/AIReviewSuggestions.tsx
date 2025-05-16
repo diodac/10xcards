@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea"; // For future editing
 
-export default function AIReviewSuggestions() {
+interface AIReviewSuggestionsProps {
+  onNavigate?: (path: string) => void; // Prop for navigation
+}
+
+export default function AIReviewSuggestions({ onNavigate }: AIReviewSuggestionsProps) {
   const { sourceText, suggestions, clearSuggestions } = useAISuggestionsStore();
 
   useEffect(() => {
@@ -91,7 +95,17 @@ export default function AIReviewSuggestions() {
       </div>
 
       <div className="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
-        <Button variant="outline" onClick={() => (window.location.href = "/ai/generate")}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (onNavigate) {
+              onNavigate("/ai/generate");
+            } else {
+              console.warn("Navigate function not provided, falling back to window.location.href");
+              window.location.href = "/ai/generate";
+            }
+          }}
+        >
           Anuluj i wygeneruj nowe
         </Button>
         <Button onClick={() => alert("Logika zapisu niezaimplementowana. Sugestie w konsoli.")}>

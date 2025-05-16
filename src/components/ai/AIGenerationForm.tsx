@@ -9,7 +9,11 @@ import { useAISuggestionsStore } from "@/lib/store";
 const MIN_CHARS = 1000;
 const MAX_CHARS = 10000;
 
-export default function AIGenerationForm() {
+interface AIGenerationFormProps {
+  onNavigate?: (path: string) => void; // Prop for navigation
+}
+
+export default function AIGenerationForm({ onNavigate }: AIGenerationFormProps) {
   const [textInput, setTextInput] = useState<string>("");
   const [charCount, setCharCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -76,8 +80,14 @@ export default function AIGenerationForm() {
       setTextInput("");
       setCharCount(0);
 
-      // Step 8: Redirect (will be implemented next)
-      window.location.href = "/ai/review-suggestions";
+      // Step 8: Redirect using the passed navigate function
+      if (onNavigate) {
+        onNavigate("/ai/review-suggestions");
+      } else {
+        // Fallback if navigate is not provided, though it should be
+        console.warn("Navigate function not provided, falling back to window.location.href");
+        window.location.href = "/ai/review-suggestions";
+      }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

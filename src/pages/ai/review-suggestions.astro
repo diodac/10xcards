@@ -1,6 +1,7 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import AIReviewSuggestions from "@/components/ai/AIReviewSuggestions.tsx";
+import { navigate } from "astro:transitions/client";
 ---
 
 <Layout title="Przeglądaj sugestie fiszek AI">
@@ -13,7 +14,7 @@ import AIReviewSuggestions from "@/components/ai/AIReviewSuggestions.tsx";
       </p>
     </header>
     <main>
-      <AIReviewSuggestions client:load />
+      <AIReviewSuggestions client:load onNavigate={navigate} />
     </main>
   </div>
 </Layout>
