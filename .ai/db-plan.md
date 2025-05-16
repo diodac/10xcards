@@ -18,7 +18,7 @@
 - **updated_at**: TIMESTAMPTZ NOT NULL DEFAULT now()
 
 ### 1.3. flashcards
-- **id**: UUID PRIMARY KEY
+- **id**: UUID PRIMARY KEY (generowany w aplikacji)
 - **deck_id**: UUID NOT NULL
   - FOREIGN KEY do `decks(id)`
 - **front**: VARCHAR(256) NOT NULL
@@ -57,7 +57,7 @@
 
 ## 5. Dodatkowe Uwagi
 
-- Wszystkie identyfikatory (`id`, `user_id`, `deck_id`, `session_id`) są generowane na poziomie aplikacji przy użyciu UUID v7.
+- Wszystkie identyfikatory (`id` w `user_profiles`, `decks`, `flashcards`, `event_logs` oraz `user_id`, `deck_id`, `session_id` jako klucze obce) są generowane na poziomie aplikacji przy użyciu UUID v7.
 - Check constraint w tabeli `flashcards` zapewnia, że kolumna `source` przyjmuje tylko jedną z dozwolonych wartości: 'ai-full', 'ai-edited' lub 'manual'.
 - Funkcjonalność spaced repetition jest pominięta w MVP i planowana na kolejne etapy rozwoju.
 - Schemat został zaprojektowany zgodnie z zasadami normalizacji (do 3NF) oraz z myślą o skalowalności przy użyciu indeksów i RLS. 

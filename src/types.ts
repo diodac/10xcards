@@ -73,10 +73,17 @@ export type FlashcardDto = Omit<Tables<"flashcards">, "source"> & {
  * Requires 'front', 'back', and 'source' (as FlashcardSourceEnum).
  * 'deck_id' and 'id' are handled by the backend.
  */
-export interface CreateFlashcardCommand {
+export interface CreateFlashcardItem {
   front: TablesInsert<"flashcards">["front"];
   back: TablesInsert<"flashcards">["back"];
   source: FlashcardSourceEnum;
+}
+
+/**
+ * Command model for the request body to create multiple flashcards in a deck.
+ */
+export interface CreateFlashcardsCommand {
+  flashcards: CreateFlashcardItem[];
 }
 
 /**
