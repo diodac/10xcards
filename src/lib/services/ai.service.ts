@@ -66,24 +66,30 @@ export async function generateFlashcardSuggestions(text: string): Promise<Flashc
 
     if (response.choices && response.choices.length > 0 && response.choices[0].message?.content) {
       const content = response.choices[0].message.content;
+      let suggestions: FlashcardSuggestionDto[];
       try {
-        const suggestions: FlashcardSuggestionDto[] = JSON.parse(content);
-        if (
-          !Array.isArray(suggestions) ||
-          !suggestions.every((s) => typeof s.front === "string" && typeof s.back === "string")
-        ) {
-          throw new AIServiceError("LLM response is not in the expected FlashcardSuggestionDto[] format.", {
-            responseContent: content,
-          });
-        }
-        return suggestions;
-      } catch (e) {
-        console.error("Failed to parse LLM response content:", e, { responseContent: content });
+        // Attempt to parse the JSON content
+        suggestions = JSON.parse(content);
+      } catch (parseError) {
+        // Handle only JSON syntax errors here
+        console.error("Failed to parse LLM response content:", parseError, { responseContent: content });
         throw new AIServiceError(
           "Failed to parse LLM response. Ensure the LLM output is a valid JSON array of {front: string, back: string} objects.",
-          { originalError: e, responseContent: content }
+          { originalError: parseError, responseContent: content }
         );
       }
+
+      // If parsing was successful, then validate the structure
+      if (
+        !Array.isArray(suggestions) ||
+        !suggestions.every((s) => typeof s.front === "string" && typeof s.back === "string")
+      ) {
+        // This error is for invalid structure after successful parsing
+        throw new AIServiceError("LLM response is not in the expected FlashcardSuggestionDto[] format.", {
+          responseContent: content,
+        });
+      }
+      return suggestions;
     } else {
       throw new AIServiceError("No suggestions found in OpenRouter response or unexpected response structure.", {
         apiResponse: response,
@@ -94,6 +100,13 @@ export async function generateFlashcardSuggestions(text: string): Promise<Flashc
 
     if (error instanceof OpenRouterConfigurationError) {
       throw new AIConfigurationError(`OpenRouterService configuration error: ${error.message}`, error);
+    }
+    // Check for more specific errors before the general OpenRouterServiceError (aliased OpenRouterError)
+    if (error instanceof OpenRouterNetworkError) {
+      throw new AIServiceError(`Network error while communicating with OpenRouter: ${error.message}`, error);
+    }
+    if (error instanceof OpenRouterResponseParsingError) {
+      throw new AIServiceError(`Failed to parse response from OpenRouter: ${error.message}`, error);
     }
     if (error instanceof OpenRouterServiceError) {
       // OpenRouterServiceError is the base for API errors from OpenRouterService
@@ -107,12 +120,6 @@ export async function generateFlashcardSuggestions(text: string): Promise<Flashc
         throw new LLMUnavailableError(`LLM service unavailable: ${error.message}`, error);
       }
       throw new AIServiceError(`OpenRouter API interaction failed: ${error.message}`, error);
-    }
-    if (error instanceof OpenRouterNetworkError) {
-      throw new AIServiceError(`Network error while communicating with OpenRouter: ${error.message}`, error);
-    }
-    if (error instanceof OpenRouterResponseParsingError) {
-      throw new AIServiceError(`Failed to parse response from OpenRouter: ${error.message}`, error);
     }
     if (
       error instanceof AIServiceError ||
