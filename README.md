@@ -43,6 +43,10 @@ Users often give up on manually creating high-quality educational flashcards due
   - Access to a wide range of models (OpenAI, Anthropic, Google, and many others)
   - Allows setting financial limits on API keys
 
+### Testing
+- **Unit & Integration Tests**: Vitest/Jest, React Testing Library
+- **E2E Tests**: Playwright
+
 ### CI/CD and Hosting
 - **GitHub Actions**: For creating CI/CD pipelines
 - **DigitalOcean**: For application hosting via docker image
