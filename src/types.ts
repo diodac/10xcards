@@ -151,3 +151,13 @@ export interface ListFlashcardsResponseDto {
 export interface StudyFlashcardsResponseDto {
   data: FlashcardDto[];
 }
+
+// --- Auth & User ---
+
+/**
+ * Represents the user object, typically from Astro.locals.
+ */
+export interface User {
+  id: string;
+  email?: string;
+}
