@@ -1,0 +1,70 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Autoryzacja 10xCards" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title} - 10xCards</title>
+  </head>
+  <body class="antialiased">
+    <main
+      class="relative flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 p-4 sm:p-8"
+    >
+      <div
+        class="relative w-full max-w-md rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-8 text-white shadow-2xl backdrop-blur-xl sm:p-10"
+      >
+        <slot />
+      </div>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  @reference "tailwindcss";
+
+  body {
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      "Noto Sans",
+      sans-serif,
+      "Apple Color Emoji",
+      "Segoe UI Emoji",
+      "Segoe UI Symbol",
+      "Noto Color Emoji";
+    /* Ensuring dark text is visible on light backgrounds if needed, and vice-versa */
+    /* color-scheme: light dark; Tailwind handles this with dark: prefix */
+  }
+  /* Styling for headings, consistent with Welcome.astro example if desired */
+  .auth-card-title {
+    @apply mb-6 bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200 bg-clip-text text-center text-3xl font-bold text-transparent;
+  }
+  /* Basic input styling - can be refined in Shadcn components later */
+  .auth-input {
+    @apply w-full rounded-md border border-slate-700 bg-slate-800/50 p-3 text-white placeholder-slate-400 focus:border-purple-500 focus:ring-purple-500;
+  }
+  .auth-button {
+    @apply w-full rounded-md bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900;
+  }
+  .auth-link {
+    @apply text-sm text-purple-300 hover:text-purple-200;
+  }
+</style>
